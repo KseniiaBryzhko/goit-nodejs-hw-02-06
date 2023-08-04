@@ -2,9 +2,15 @@ const User = require("../models/user");
 const { HttpError, controllerWrapper } = require("../helpers");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const fs = require("fs/promises");
+const path = require("path");
+const gravatar = require("gravatar");
+const Jimp = require("jimp");
 
 require("dotenv").config();
 const { SECRET_KEY } = process.env;
+
+const avatarsDir = path.join(__dirname, "../", "public", "avatars");
 
 const register = async (req, res) => {
   const { email, password } = req.body;
@@ -16,7 +22,14 @@ const register = async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const newUser = await User.create({ ...req.body, password: hashedPassword });
+  const avatarURL = gravatar.url(email);
+
+  const newUser = await User.create({
+    ...req.body,
+    password: hashedPassword,
+    avatarURL,
+  });
+
   res.status(201).json({
     user: {
       email: newUser.email,
@@ -77,10 +90,45 @@ const updateSubscription = async (req, res) => {
   res.json({ subscription: result.subscription });
 };
 
+const resizedtempDir = path.join(__dirname, "../", "tmp", "resize");
+
+const updateAvatar = async (req, res) => {
+  if (!req.file) {
+    throw HttpError(404, "Please add file for upload");
+  }
+
+  const { _id } = req.user;
+  const { path: tempDir, originalname } = req.file;
+
+  const fileName = `${_id}_${originalname}`;
+  const resultUpload = path.join(avatarsDir, fileName);
+  const resizedResultUpload = path.join(resizedtempDir, fileName);
+
+  const reziseImg = await Jimp.read(tempDir);
+
+  reziseImg
+    .autocrop()
+    .resize(250, 250)
+    .cover(250, 250)
+    .writeAsync(`${resizedtempDir}/${fileName}`);
+
+  await fs.unlink(tempDir);
+  await fs.rename(resizedResultUpload, resultUpload);
+
+  const avatarURL = path.join("avatars", fileName);
+
+  await User.findByIdAndUpdate(_id, { avatarURL });
+
+  res.json({
+    avatarURL,
+  });
+};
+
 module.exports = {
   register: controllerWrapper(register),
   login: controllerWrapper(login),
   logout: controllerWrapper(logout),
   getCurrent: controllerWrapper(getCurrent),
   updateSubscription: controllerWrapper(updateSubscription),
+  updateAvatar: controllerWrapper(updateAvatar),
 };
