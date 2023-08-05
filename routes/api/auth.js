@@ -1,5 +1,10 @@
 const express = require("express");
-const { validateBody, isBodyEmpty, authenticate } = require("../../middlewars");
+const {
+  validateBody,
+  isBodyEmpty,
+  authenticate,
+  imageUpload,
+} = require("../../middlewars");
 const registerValidator = require("../../schemas/registerSchema");
 const loginValidator = require("../../schemas/loginSchema");
 const subscriptionValidator = require("../../schemas/updateSubscriptionSchema");
@@ -30,6 +35,13 @@ router.patch(
   authenticate,
   validateBody(subscriptionValidator),
   controllers.updateSubscription
+);
+
+router.patch(
+  "/avatars",
+  authenticate,
+  imageUpload.single("avatar"),
+  controllers.updateAvatar
 );
 
 module.exports = router;
