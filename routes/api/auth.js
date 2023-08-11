@@ -7,6 +7,7 @@ const {
 } = require("../../middlewars");
 const registerValidator = require("../../schemas/registerSchema");
 const loginValidator = require("../../schemas/loginSchema");
+const emailValidator = require("../../schemas/userEmailSchema");
 const subscriptionValidator = require("../../schemas/updateSubscriptionSchema");
 const controllers = require("../../controllers/users");
 
@@ -42,6 +43,15 @@ router.patch(
   authenticate,
   imageUpload.single("avatar"),
   controllers.updateAvatar
+);
+
+router.get("/verify/:verificationToken", controllers.verify);
+
+router.post(
+  "/verify",
+  isBodyEmpty(),
+  validateBody(emailValidator),
+  controllers.resendVerifyEmail
 );
 
 module.exports = router;
